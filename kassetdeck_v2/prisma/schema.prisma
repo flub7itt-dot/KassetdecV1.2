@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  balances  Balance[]
+  orders    Order[]
+}
+
+model Balance {
+  id        String   @id @default(cuid())
+  userId    String
+  asset     String
+  free      Decimal  @db.Decimal(30, 10)
+  locked    Decimal  @db.Decimal(30, 10)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, asset])
+  @@index([asset])
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  OPEN
+  PARTIALLY_FILLED
+  FILLED
+  CANCELED
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  userId    String
+  symbol    String
+  side      OrderSide
+  price     Decimal     @db.Decimal(30, 10)
+  quantity  Decimal     @db.Decimal(30, 10)
+  filledQty Decimal     @db.Decimal(30, 10) @default(0)
+  status    OrderStatus @default(OPEN)
+  createdAt DateTime    @default(now())
+
+  user   User    @relation(fields: [userId], references: [id])
+  trades Trade[]
+  @@index([symbol, createdAt])
+}
+
+model Trade {
+  id        String   @id @default(cuid())
+  symbol    String
+  price     Decimal  @db.Decimal(30, 10)
+  quantity  Decimal  @db.Decimal(30, 10)
+  makerSide OrderSide
+  createdAt DateTime @default(now())
+
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id])
+
+  @@index([symbol, createdAt])
+}
